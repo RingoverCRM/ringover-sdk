@@ -13,6 +13,9 @@ let notificationDurationInMs = 7000;
 
 let unreadNotifications = 0;
 
+let originalTitle = document.title;
+let originalFavicon = getCurrentFavicon();
+
 const PLATFORMS = {
   EMPOWER: "empower",
   CADENCE: "cadence",
@@ -26,6 +29,20 @@ const NOTIFICATION_TYPES = {
   IN_APP: "in_app",
   ALL: "all",
 };
+
+function getCurrentFavicon() {
+  // Select the link element with rel="icon" or rel="shortcut icon"
+  const link = document.querySelector(
+    "link[rel='icon'], link[rel='shortcut icon']",
+  );
+
+  // Check if the link element exists
+  if (link) {
+    return link.href; // Return the href attribute which contains the favicon URL
+  } else {
+    return null; // Return null if no favicon is found
+  }
+}
 
 function getNotificationHtml(title, body) {
   return `
@@ -183,7 +200,9 @@ const notificationStyles = `
 `;
 
 function playAlertSound() {
-  const audio = new Audio("path/to/your/alert-sound.mp3"); // Replace with your sound file path
+  const audio = new Audio(
+    "https://storage.googleapis.com/apt-cubist-307713.appspot.com/crm/assets/alert.mp3",
+  );
   audio.play().catch((error) => {
     console.error("Error playing sound:", error);
   });
@@ -191,9 +210,12 @@ function playAlertSound() {
 
 function updateUnreadNotifications() {
   unreadNotifications++;
-  document.title = `(${unreadNotifications}) New Notifications - Your Page Title`; // Update the title
+  const title = document.title.replace(/^\(\d+\)\s*/, "");
+  document.title = `(${unreadNotifications}) ${title}`;
   // Optionally, change the favicon
-  changeFavicon("path/to/your/unread-favicon.ico"); // Replace with your unread favicon path
+  changeFavicon(
+    "https://storage.googleapis.com/apt-cubist-307713.appspot.com/crm/assets/red-favicon-16x16.png",
+  );
 }
 
 function changeFavicon(src) {
@@ -235,7 +257,7 @@ class RingoverNotification {
       "ringover-sdk-notif-stack",
     );
 
-    notificationStack.appendChild(notification);
+    notificationStack.prepend(notification);
 
     // Select the close button
     const closeButton = notification.querySelector(".notif-close");
@@ -260,6 +282,12 @@ class RingoverNotification {
           notificationStack.removeChild(notification);
       });
     }, notificationDurationInMs); // Adjust time as needed
+
+    // Only play sound and update title if the user is not in the current tab
+    if (document.hidden) {
+      playAlertSound();
+      updateUnreadNotifications();
+    }
   }
 
   showSystemNotification() {
@@ -368,6 +396,16 @@ function connect({ platform, notificationIconUrl, notificationDuration }) {
   } catch (err) {
     console.log(err);
   }
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      if (unreadNotifications > 0) {
+        document.title = originalTitle;
+        unreadNotifications = 0;
+        changeFavicon(originalFavicon);
+      }
+    }
+  });
 }
 
 function sendTestNotification() {
