@@ -5,11 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Best website ever</title>
     <script src="./dist/sdk.bundle.js"></script>
+    <link rel="stylesheet" href="index.css"/>
   </head>
   <body>
+    <style>
+    </style>
     <h1>Notification test</h1>
+    <button onclick="sendNotification()">Show notification</button>
+
+    <!-- <div class="ringover-sdk-notif"> -->
+    <!--   <div class="notif-color"></div> -->
+    <!---->
+    <!--   <div class="notif-content"> -->
+    <!--     <div class="notif-heading"> -->
+    <!--       <div class="notif-icon"> -->
+    <!--         <img src="https://storage.googleapis.com/apt-cubist-307713.appspot.com/crm/assets/logo-primary.svg"/> -->
+    <!--       </div> -->
+    <!--       <strong>Basic notification</strong> -->
+    <!--     </div> -->
+    <!--     <div class="notif-text"> -->
+    <!--       <p>Alert banner is a powerful communication tool used to display important messages prominently across the user interface. These messages can range from critical system-wide issues, such as errors or warnings, to informational or success messages.</p> -->
+    <!--     </div> -->
+    <!--   </div> -->
+    <!---->
+    <!--   <button class="notif-close"> -->
+    <!--     <img src="https://storage.googleapis.com/apt-cubist-307713.appspot.com/crm/assets/close.svg"/> -->
+    <!--   </button> -->
+    <!-- </div> -->
+
     <script defer>
-      RingoverSDK.connect("https://0b2f-103-234-156-55.ngrok-free.app/");
+    RingoverSDK.connect({
+      platform: "cadence"
+    });
+
+      function sendNotification() {
+        RingoverSDK.sendTestNotification()
+      }
     </script>
   </body>
 </html>

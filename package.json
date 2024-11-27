@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "source": "src/index.js",
   "scripts": {
+    "watch": "webpack watch",
     "build": "webpack"
   },
   "author": "Subhransu Dash",
