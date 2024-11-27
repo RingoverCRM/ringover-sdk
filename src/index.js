@@ -13,6 +13,8 @@ let notificationDurationInMs = 7000;
 
 let unreadNotifications = 0;
 
+let originalFavicon = "";
+
 const PLATFORMS = {
   EMPOWER: "empower",
   CADENCE: "cadence",
@@ -183,7 +185,9 @@ const notificationStyles = `
 `;
 
 function playAlertSound() {
-  const audio = new Audio("path/to/your/alert-sound.mp3"); // Replace with your sound file path
+  const audio = new Audio(
+    "https://storage.googleapis.com/apt-cubist-307713.appspot.com/crm/assets/alert.mp3",
+  );
   audio.play().catch((error) => {
     console.error("Error playing sound:", error);
   });
@@ -191,9 +195,11 @@ function playAlertSound() {
 
 function updateUnreadNotifications() {
   unreadNotifications++;
-  document.title = `(${unreadNotifications}) New Notifications - Your Page Title`; // Update the title
+  document.title = `(${unreadNotifications}) ${document.title}`;
   // Optionally, change the favicon
-  changeFavicon("path/to/your/unread-favicon.ico"); // Replace with your unread favicon path
+  changeFavicon(
+    "https://storage.googleapis.com/apt-cubist-307713.appspot.com/crm/assets/red-favicon-16x16.png",
+  );
 }
 
 function changeFavicon(src) {
@@ -235,7 +241,7 @@ class RingoverNotification {
       "ringover-sdk-notif-stack",
     );
 
-    notificationStack.appendChild(notification);
+    notificationStack.prepend(notification);
 
     // Select the close button
     const closeButton = notification.querySelector(".notif-close");
@@ -291,6 +297,12 @@ class RingoverNotification {
     } else {
       // If the user refuses to get notified, we can fallback to a regular modal alert
     }
+
+    // Only play sound and update title if the user is not in the current tab
+    // if (document.hidden) {
+    //   playAlertSound();
+    //   updateUnreadNotifications();
+    // }
   }
 
   sendNotification() {
