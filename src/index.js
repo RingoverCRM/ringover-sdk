@@ -13,7 +13,8 @@ let notificationDurationInMs = 7000;
 
 let unreadNotifications = 0;
 
-let originalFavicon = "";
+let originalTitle = document.title;
+let originalFavicon = getCurrentFavicon();
 
 const PLATFORMS = {
   EMPOWER: "empower",
@@ -28,6 +29,20 @@ const NOTIFICATION_TYPES = {
   IN_APP: "in_app",
   ALL: "all",
 };
+
+function getCurrentFavicon() {
+  // Select the link element with rel="icon" or rel="shortcut icon"
+  const link = document.querySelector(
+    "link[rel='icon'], link[rel='shortcut icon']",
+  );
+
+  // Check if the link element exists
+  if (link) {
+    return link.href; // Return the href attribute which contains the favicon URL
+  } else {
+    return null; // Return null if no favicon is found
+  }
+}
 
 function getNotificationHtml(title, body) {
   return `
@@ -195,7 +210,8 @@ function playAlertSound() {
 
 function updateUnreadNotifications() {
   unreadNotifications++;
-  document.title = `(${unreadNotifications}) ${document.title}`;
+  const title = document.title.replace(/^\(\d+\)\s*/, "");
+  document.title = `(${unreadNotifications}) ${title}`;
   // Optionally, change the favicon
   changeFavicon(
     "https://storage.googleapis.com/apt-cubist-307713.appspot.com/crm/assets/red-favicon-16x16.png",
@@ -266,6 +282,12 @@ class RingoverNotification {
           notificationStack.removeChild(notification);
       });
     }, notificationDurationInMs); // Adjust time as needed
+
+    // Only play sound and update title if the user is not in the current tab
+    if (document.hidden) {
+      playAlertSound();
+      updateUnreadNotifications();
+    }
   }
 
   showSystemNotification() {
@@ -297,12 +319,6 @@ class RingoverNotification {
     } else {
       // If the user refuses to get notified, we can fallback to a regular modal alert
     }
-
-    // Only play sound and update title if the user is not in the current tab
-    // if (document.hidden) {
-    //   playAlertSound();
-    //   updateUnreadNotifications();
-    // }
   }
 
   sendNotification() {
@@ -380,6 +396,16 @@ function connect({ platform, notificationIconUrl, notificationDuration }) {
   } catch (err) {
     console.log(err);
   }
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      if (unreadNotifications > 0) {
+        document.title = originalTitle;
+        unreadNotifications = 0;
+        changeFavicon(originalFavicon);
+      }
+    }
+  });
 }
 
 function sendTestNotification() {
