@@ -9,6 +9,8 @@ const defaultIconUrl =
 
 let iconUrl = defaultIconUrl;
 
+let notificationDurationInMs = 7000;
+
 let unreadNotifications = 0;
 
 const PLATFORMS = {
@@ -19,26 +21,165 @@ const PLATFORMS = {
   ALL: "all",
 };
 
-const notificationStyles = `
-    .ringover-sdk-notif {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background-color: #4caf50; /* Green background */
-      color: white; /* White text */
-      padding: 15px;
-      border-radius: 5px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-      z-index: 1000; /* Ensure it appears above other elements */
-      transition: opacity 0.5s ease, transform 0.5s ease;
-      opacity: 1;
-      transform: translateY(0);
-    }
+const NOTIFICATION_TYPES = {
+  BROWSER: "browser",
+  IN_APP: "in_app",
+  ALL: "all",
+};
 
-    .ringover-sdk-notif.hide {
-      opacity: 0;
-      transform: translateY(-20px);
-    }
+function getNotificationHtml(title, body) {
+  return `
+      <div class="notif-color"></div>
+
+      <div class="notif-content">
+        <div class="notif-heading">
+          <div class="notif-icon">
+            <img src="https://storage.googleapis.com/apt-cubist-307713.appspot.com/crm/assets/logo-primary.svg"/>
+          </div>
+          <strong>${title}</strong>
+        </div>
+        <div class="notif-text">
+          <p>${body}</p>
+        </div>
+      </div>
+
+      <button class="notif-close">
+        <img src="https://storage.googleapis.com/apt-cubist-307713.appspot.com/crm/assets/close.svg"/>
+      </button>
+`;
+}
+
+function addGoogleFontHeaders() {
+  // Create the preconnect links
+  const preconnectGoogleFonts = document.createElement("link");
+  preconnectGoogleFonts.rel = "preconnect";
+  preconnectGoogleFonts.href = "https://fonts.googleapis.com";
+
+  const preconnectGstatic = document.createElement("link");
+  preconnectGstatic.rel = "preconnect";
+  preconnectGstatic.href = "https://fonts.gstatic.com";
+  preconnectGstatic.crossOrigin = "";
+
+  // Create the stylesheet link
+  const stylesheetLink = document.createElement("link");
+  stylesheetLink.href =
+    "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap";
+  stylesheetLink.rel = "stylesheet";
+
+  // Append the links to the document head
+  document.head.appendChild(preconnectGoogleFonts);
+  document.head.appendChild(preconnectGstatic);
+  document.head.appendChild(stylesheetLink);
+}
+
+function addNotificationStack() {
+  const style = document.createElement("style");
+  style.textContent = `
+  #ringover-sdk-notif-stack {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+
+    width: 500px;
+    padding-bottom: 20px;
+
+    height: 60vh;
+    overflow: auto;
+
+    z-index: 2147483647;
+
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    align-items: flex-end;
+  }
+
+  #ringover-sdk-notif-stack::-webkit-scrollbar {
+    display: none;
+    width: 0;
+  }
+
+`;
+
+  // Append the style element to the head
+  document.head.appendChild(style);
+
+  const notificationStack = document.createElement("div");
+  notificationStack.id = "ringover-sdk-notif-stack";
+
+  // Append the notification to the body
+  document.body.appendChild(notificationStack);
+}
+
+const notificationStyles = `
+.ringover-sdk-notif {
+  position: relative;
+  border-radius: 8px;
+  z-index: 1000;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+  opacity: 1;
+  transform: translateY(0);
+
+  display: flex;
+  width: 380px;
+  max-width: 480px;
+}
+
+.ringover-sdk-notif.hide {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.ringover-sdk-notif .notif-color {
+  width: 6px;
+  border-radius: 8px 0px 0px 8px;
+  background: #01707f;
+}
+
+.ringover-sdk-notif .notif-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.ringover-sdk-notif .notif-heading .notif-icon {
+  transform: translateY(2px);
+}
+
+.ringover-sdk-notif .notif-heading strong {
+  font-weight: 700;
+  line-height: 21px; /* 150% */
+  letter-spacing: 0.25px;
+  color: #01707f;
+  font-family: Inter;
+}
+
+.ringover-sdk-notif .notif-content {
+  background-color: #f9fbff;
+  position: relative;
+  padding: 20px;
+  width: 100%;
+}
+
+.ringover-sdk-notif .notif-content .notif-text p {
+  color: #394759;
+  margin: 0;
+  font-family: Inter;
+}
+
+.ringover-sdk-notif .notif-close {
+  background-color: #f9fbff;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
 `;
 
 function playAlertSound() {
@@ -69,11 +210,13 @@ class RingoverNotification {
   title = "";
   body = "";
   platform = "";
+  notificationTypes = [];
 
-  constructor({ title, body, platform }) {
+  constructor({ title, body, platform, notificationTypes }) {
     this.title = title;
     this.body = body;
     this.platform = platform;
+    this.notificationTypes = notificationTypes;
   }
 
   showInAppNotification() {
@@ -86,20 +229,37 @@ class RingoverNotification {
     // Create a notification element
     const notification = document.createElement("div");
     notification.className = "ringover-sdk-notif";
-    notification.innerHTML = `<strong>${this.title}</strong><p>${this.body}</p>`;
+    notification.innerHTML = getNotificationHtml(this.title, this.body);
 
-    // Append the notification to the body
-    document.body.appendChild(notification);
+    const notificationStack = document.getElementById(
+      "ringover-sdk-notif-stack",
+    );
+
+    notificationStack.appendChild(notification);
+
+    // Select the close button
+    const closeButton = notification.querySelector(".notif-close");
+
+    // Add click event listener to the close button
+    closeButton.addEventListener("click", () => {
+      notification.classList.add("hide");
+      // Remove the notification from the DOM after the animation
+      notification.addEventListener("transitionend", () => {
+        if (notificationStack.contains(notification)) {
+          notificationStack.removeChild(notification);
+        }
+      });
+    });
 
     // Automatically hide the notification after a certain time (e.g., 5 seconds)
     setTimeout(() => {
       notification.classList.add("hide");
       // Remove the notification from the DOM after the animation
       notification.addEventListener("transitionend", () => {
-        if (document.body.contains(notification))
-          document.body.removeChild(notification);
+        if (notificationStack.contains(notification))
+          notificationStack.removeChild(notification);
       });
-    }, 5000); // Adjust time as needed
+    }, notificationDurationInMs); // Adjust time as needed
   }
 
   showSystemNotification() {
@@ -132,6 +292,28 @@ class RingoverNotification {
       // If the user refuses to get notified, we can fallback to a regular modal alert
     }
   }
+
+  sendNotification() {
+    for (const notificationType of this.notificationTypes) {
+      switch (notificationType) {
+        case NOTIFICATION_TYPES.BROWSER: {
+          this.showSystemNotification();
+          break;
+        }
+
+        case NOTIFICATION_TYPES.IN_APP: {
+          this.showInAppNotification();
+          break;
+        }
+
+        case NOTIFICATION_TYPES.ALL: {
+          this.showInAppNotification();
+          this.showSystemNotification();
+          break;
+        }
+      }
+    }
+  }
 }
 
 function initializeSocketEvents(platform) {
@@ -147,17 +329,20 @@ function initializeSocketEvents(platform) {
 
   socket.on("notification", (data) => {
     console.log("Notification received:", data);
+    if (data.platform !== platform && data.platform !== PLATFORMS.ALL) return;
+
     const notification = new RingoverNotification({
       title: data.title,
       body: data.caption,
       platform: data.platform,
+      notificationTypes: data.notification_types,
     });
-    notification.showSystemNotification();
+    notification.sendNotification();
   });
 }
 
 // This is the main function which is called by the client
-function connect({ platform, notificationIconUrl }) {
+function connect({ platform, notificationIconUrl, notificationDuration }) {
   if (!platform) {
     console.log("Platform is required");
     return;
@@ -169,8 +354,12 @@ function connect({ platform, notificationIconUrl }) {
     console.log("Invalid platform provided");
     return;
   }
+  addGoogleFontHeaders();
+  addNotificationStack();
 
-  iconUrl = notificationIconUrl || defaultIconUrl;
+  if (notificationIconUrl) iconUrl = notificationIconUrl;
+  if (notificationDuration) notificationDurationInMs = notificationDuration;
+
   try {
     socket = io(socketUrl, {
       transports: ["websocket"],

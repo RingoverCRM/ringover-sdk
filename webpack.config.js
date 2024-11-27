@@ -23,5 +23,5 @@ module.exports = {
       },
     ],
   },
-  mode: "development", // Set to production mode for minification
+  mode: "production", // Set to production mode for minification
 };
