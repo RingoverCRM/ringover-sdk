@@ -98,9 +98,9 @@ function addNotificationStack() {
     right: 16px;
 
     width: 500px;
-    padding-bottom: 20px;
+    padding-bottom: 30px;
 
-    height: 60vh;
+    max-height: 60vh;
     overflow: auto;
 
     z-index: 2147483647;
