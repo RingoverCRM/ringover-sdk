@@ -8,8 +8,13 @@
   </head>
   <body>
     <h1>Notification test</h1>
+    <button onclick="sendNotification()">Show notification</button>
     <script defer>
-      RingoverSDK.connect("https://0b2f-103-234-156-55.ngrok-free.app/");
+      RingoverSDK.connect("cadence");
+
+      function sendNotification() {
+        RingoverSDK.sendTestNotification()
+      }
     </script>
   </body>
 </html>
